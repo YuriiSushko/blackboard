@@ -1,13 +1,22 @@
 #include <iostream>
-using namespace std;
+#include <memory>
 #include <vector>
+using namespace std;
+
 #define RESET   "\033[0m"
 #define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+#define BLUE    "\033[34m"
+#define MAGENTA "\033[35m"
+#define CYAN    "\033[36m"
 
 class Figure{
 public:
+    virtual ~Figure() {};
+
     virtual void add(vector<vector<char>>* grid) = 0;
-    virtual void shapes() = 0;
+    virtual void get_info() = 0;
 };
 
 class Square: public Figure{
@@ -55,8 +64,8 @@ public:
         }
     }
 
-    void shapes() override {
-        cout << "Square: size, x, y\n"; 
+    void get_info() override {
+        cout << "Square: id(" << 4 << "), size(" << size << ">>), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
     }
 };
 
@@ -67,7 +76,7 @@ private:
     const int BOARD_HEIGHT = 50;
 
     vector<vector<char>> grid;
-    vector<Figure*> figures;
+    vector<unique_ptr<Figure>> figures;
 public:
     blackboard() : grid(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' ')) {}
 
@@ -92,18 +101,17 @@ public:
     }
 
     void add_square(const int& size, const int& x, const int& y){
-        Figure* figure = new Square(size, x, y);
-        Square* new_square = dynamic_cast<Square*>(figure);
-        
-        if (new_square){
-            new_square->add(&grid);
-            figures.push_back(new_square);
-        }
-        else{
-            cout << "Dynamic cast failure\n";
-        }
+        auto figure = make_unique<Square>(size, x, y);
+        figure->add(&grid);
+        figures.push_back(move(figure));
     } 
-    
+
+    virtual void shapes() {
+        cout << MAGENTA << "Square:" << YELLOW << " size, coordinates" << BLUE << "[x,y]" << RESET << " of top left edge\n";
+        cout << MAGENTA << "Circle:" << YELLOW << " radius, coordinates" << BLUE << "[x,y]" << RESET << " of centre\n";
+        cout << MAGENTA << "Triangle:" << YELLOW << " height, side lenght, coordinates" << BLUE << "[x,y]" << RESET << " of upmost edge\n";
+        cout << MAGENTA << "Line:" << YELLOW << " lenght, angle, coordinates" << BLUE << "[x,y]" << RESET << " of left edge\n";
+    };
 };
 
 int main() {
@@ -113,6 +121,6 @@ int main() {
     blackboard.add_square(3, 43, 18);
     
     blackboard.draw();
-
+    blackboard.shapes();
     return 0;
 }
