@@ -134,7 +134,10 @@ public:
     Circle(const int& radius, const int& x, const int& y): radius(radius), coordinates(make_tuple(x,y)), s_id(id++) {}
 
     void add(vector<vector<char>>* grid) override{
-        if (radius <= 0) return;
+        if (radius <= 0){
+            cerr << "Please, provide positive numbers for size\n";
+            return;
+        }
         
         int x = get<0>(coordinates); 
         int y = get<1>(coordinates); 
@@ -154,6 +157,44 @@ public:
 
     void get_info() override {
         cout << "Circle: id(" << s_id << "), radius(" << radius << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+    }
+};
+
+class Line: public Figure{
+private:
+    int length;
+    int angle;
+    int s_id;
+    tuple<int, int> coordinates;
+public:
+    Line(const int& length, const int& angle, const int& x, const int& y): length(length), angle(angle), coordinates(make_tuple(x,y)), s_id(id++) {}
+
+    void add(vector<vector<char>>* grid) override{
+        if (length < 0 || angle < 0) {
+            cerr << "Please, provide positive numbers for size\n";
+            return;
+        } 
+
+        int x = get<0>(coordinates); 
+        int y = get<1>(coordinates); 
+
+        int up_bound = grid[0].size();
+        int right_bound = grid[0][0].size();
+
+        double rad_angle = angle * 3.14 / 180.0;
+
+        for (int i = 0; i < length; ++i) {
+            int x_draw = x + (int)(i * cos(rad_angle));
+            int y_draw = y + (int)(i * sin(rad_angle));
+
+            if (x_draw > 0 && x_draw < right_bound && up_bound - y_draw > 0 && y_draw > 0) {
+                (*grid)[up_bound - y_draw][x_draw] = '*';
+            }
+        }
+    }
+
+    void get_info() override {
+        cout << "Line: id(" << s_id << "), length(" << length << "), angle(" << angle << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
     }
 };
 
@@ -255,6 +296,14 @@ public:
         figures.push_back(move(figure));        
     }
 
+    void add_line(const int& length, const int& angle, const int& x, const int& y){
+        previous = grid;
+
+        auto figure = make_unique<Line>(length, angle, x, y);
+        figure->add(&grid);
+        figures.push_back(move(figure));     
+    }
+
     void shapes() {
         cout << MAGENTA << "Square:" << YELLOW << " size, coordinates" << BLUE << "[x,y]" << RESET << " of top left edge\n";
         cout << MAGENTA << "Circle:" << YELLOW << " radius, coordinates" << BLUE << "[x,y]" << RESET << " of centre\n";
@@ -296,6 +345,7 @@ int main() {
     blackboard.add_square(3, 43, 18);
     blackboard.add_triangle(5, 44, 27);
     blackboard.add_circle(11, 4, 50);
+    blackboard.add_line(300, 4, 1, 10);
     
     blackboard.draw();
     blackboard.list();
