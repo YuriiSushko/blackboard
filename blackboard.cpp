@@ -3,6 +3,7 @@
 #include <vector>
 #include <fstream>
 #include <cmath>
+#include <cctype> 
 using namespace std;
 
 #define RESET   "\033[0m"
@@ -240,7 +241,7 @@ public:
 };
 
 
-class blackboard
+class Blackboard
 {
 private:
     const int BOARD_WIDTH = 90;
@@ -250,7 +251,7 @@ private:
     vector<unique_ptr<Figure>> figures;
     vector<vector<char>> previous;
 public:
-    blackboard() : grid(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' ')) {}
+    Blackboard() : grid(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' ')) {}
 
     void draw() {
         cout << " ";
@@ -307,19 +308,25 @@ public:
     void shapes() {
         cout << MAGENTA << "Square:" << YELLOW << " size, coordinates" << BLUE << "[x,y]" << RESET << " of top left edge\n";
         cout << MAGENTA << "Circle:" << YELLOW << " radius, coordinates" << BLUE << "[x,y]" << RESET << " of centre\n";
-        cout << MAGENTA << "Triangle:" << YELLOW << " height, side length, coordinates" << BLUE << "[x,y]" << RESET << " of upmost edge\n";
+        cout << MAGENTA << "Triangle:" << YELLOW << " height, coordinates" << BLUE << "[x,y]" << RESET << " of upmost edge\n";
         cout << MAGENTA << "Line:" << YELLOW << " length, angle, coordinates" << BLUE << "[x,y]" << RESET << " of left edge\n";
     };
 
     void list(){
-        for (auto& shape: figures){
-            shape->get_info();
+        if(figures.size() > 0){
+            for (auto& shape: figures){
+                shape->get_info();
+            }
         }
+        else cout << " No figures on board\n";        
     }
 
     void undo(){
-        figures.pop_back();
-        grid = previous;
+        if(figures.size() > 0){
+            figures.pop_back();
+            grid = previous;
+        }
+        else cout << "No figures on board\n";
     }
 
     void clear(){
@@ -338,16 +345,144 @@ public:
     }
 };
 
-int main() {
-    blackboard blackboard;
 
-    blackboard.add_square(9, 40, 21);
-    blackboard.add_square(3, 43, 18);
-    blackboard.add_triangle(5, 44, 27);
-    blackboard.add_circle(11, 4, 50);
-    blackboard.add_line(300, 4, 1, 10);
-    
-    blackboard.draw();
-    blackboard.list();
+class Parser {
+private:
+    Blackboard blackboard;
+    vector<string> split(string& str, const string& delimiter) {
+        vector<std::string> tokens;
+        size_t pos = 0;
+        string token;
+        while ((pos = str.find(delimiter)) != string::npos) {
+            token = str.substr(0, pos);
+            tokens.push_back(token);
+            str.erase(0, pos + delimiter.length());
+        }
+        tokens.push_back(str);
+
+        return tokens;
+    }
+
+public:
+    void parse_command(string& command_line) {
+    vector<string> parts = split(command_line, " ");
+    if (parts.empty()) {
+        cout << "Start typing" << endl;
+        return;
+    }
+
+    string command = parts[0];
+
+    if (command == "draw"){
+        blackboard.draw();
+    }
+    else if (command == "list"){
+        blackboard.list();
+    }
+    else if (command == "shapes"){
+        blackboard.shapes();
+    }
+    else if (command == "undo"){
+        blackboard.undo();
+    }
+    else if (command == "clear"){
+        blackboard.clear();
+    }
+    else if (command == "save"){
+        if(parts.size() > 1)
+            blackboard.save(parts[1]);
+        else 
+            cout << "Please provide a filename to save.\n";
+    } 
+    else if (command == "load"){
+        if(parts.size() > 1)
+            blackboard.load(parts[1]);
+        else 
+            cout << "Please provide a filename to load.\n";
+    }
+    else if(command == "add"){
+        if(parts.size() < 3) {
+            cout << "Oups! It's incorrect command usage. Type shapes command to see correct usage\n";
+            return;
+        }
+        string figure = parts[1];
+
+        if (figure == "square" && parts.size() == 5){
+            try {
+                int size = stoi(parts[2]);
+                int x = stoi(parts[3]);
+                int y = stoi(parts[4]);
+                blackboard.add_square(size, x, y);
+            } catch (exception& e) {
+                cout << "Please, provide only valid integers\n";
+            }
+        }
+
+        else if (figure == "circle" && parts.size() == 5){
+            try {
+                int radius = stoi(parts[2]);
+                int x = stoi(parts[3]);
+                int y = stoi(parts[4]);
+                blackboard.add_circle(radius, x, y);
+            } catch (exception& e) {
+                cout << "Please, provide only valid integers\n";
+            }
+        }
+
+        else if (figure == "triangle" && parts.size() == 5){
+            try {
+                int height = stoi(parts[2]);
+                int x = stoi(parts[3]);
+                int y = stoi(parts[4]);
+                blackboard.add_triangle(height, x, y);
+            } catch (exception& e) {
+                cout << "Please, provide only valid integers\n";
+            }
+        }
+
+        else if (figure == "line" && parts.size() == 6){
+            try {
+                int length = stoi(parts[2]);
+                int angle = stoi(parts[3]);
+                int x = stoi(parts[4]);
+                int y = stoi(parts[5]);
+                blackboard.add_line(length, angle, x, y);
+            } catch (exception& e) {
+                cout << "Please, provide only valid integers\n";
+            }
+        }
+        else {
+            cout << "No such figure, enter 'shapes' to see available figures\n";
+        }
+    }
+    else {
+        cout << "No such command. Available commands are:\n"
+             << "draw\nlist\nshapes\nundo\nclear\nsave\nload\nadd\n";
+    }
+}
+};
+
+class Engine {
+public:
+    void run() {
+        string input;
+        Parser parser;
+        while (true) {
+            cout << "Enter command: ";
+            getline(cin, input);
+
+            if (input == "exit") {
+                break;
+            }
+            parser.parse_command(input);
+        }
+    }
+};
+
+int main() {
+    Engine engine;
+
+    engine.run();
+
     return 0;
 }
