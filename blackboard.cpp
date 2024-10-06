@@ -75,6 +75,56 @@ public:
     }
 };
 
+class Triangle: public Figure{
+private:
+    int height;
+    int s_id;
+    tuple<int,int> coordinates;
+public:
+    Triangle(const int& height, const int& x, const int& y): height(height), coordinates(make_tuple(x,y)), s_id(id++) {}
+
+    void add(vector<vector<char>>* grid) override{
+        if (height <= 0) return;
+        
+        int x = get<0>(coordinates); 
+        int y = get<1>(coordinates); 
+
+        int up_bound = grid[0].size();
+        int right_bound = grid[0][0].size();
+
+        for (int i = 0; i < height; ++i) {
+            int leftMost = x - i;    
+            int rightMost = x + i;   
+            int posY = y - i;        
+
+            
+            if (posY < up_bound) {
+                // Set the left edge of the triangle
+                if (leftMost >= 0 && leftMost < right_bound) {
+                    (*grid)[up_bound - posY - 1][leftMost] = '*';
+                }
+            
+                if (rightMost >= 0 && rightMost < right_bound) {
+                    (*grid)[up_bound - posY - 1][rightMost] = '*';
+                }
+            }
+        }
+
+    
+        int baseY = y - height + 1; 
+        for (int j = 0; j < 2 * height - 1; ++j) {
+            int baseX = x + height - 1 - j;
+            if (baseX >= 0 && baseX < right_bound && baseY < up_bound) {
+                (*grid)[up_bound - baseY - 1][baseX] = '*'; 
+            }
+        }
+    }
+
+    void get_info() override {
+        cout << "Triangle: id(" << s_id << "), height(" << height << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+    }
+};
+
 class FileSystem {
 private:
     string path;
@@ -157,11 +207,19 @@ public:
         figures.push_back(move(figure));
     } 
 
+    void add_triangle(const int& height, const int& x, const int& y){
+        previous = grid;
+
+        auto figure = make_unique<Triangle>(height, x, y);
+        figure->add(&grid);
+        figures.push_back(move(figure));
+    } 
+
     void shapes() {
         cout << MAGENTA << "Square:" << YELLOW << " size, coordinates" << BLUE << "[x,y]" << RESET << " of top left edge\n";
         cout << MAGENTA << "Circle:" << YELLOW << " radius, coordinates" << BLUE << "[x,y]" << RESET << " of centre\n";
-        cout << MAGENTA << "Triangle:" << YELLOW << " height, side lenght, coordinates" << BLUE << "[x,y]" << RESET << " of upmost edge\n";
-        cout << MAGENTA << "Line:" << YELLOW << " lenght, angle, coordinates" << BLUE << "[x,y]" << RESET << " of left edge\n";
+        cout << MAGENTA << "Triangle:" << YELLOW << " height, side length, coordinates" << BLUE << "[x,y]" << RESET << " of upmost edge\n";
+        cout << MAGENTA << "Line:" << YELLOW << " length, angle, coordinates" << BLUE << "[x,y]" << RESET << " of left edge\n";
     };
 
     void list(){
@@ -196,14 +254,9 @@ int main() {
 
     blackboard.add_square(9, 40, 21);
     blackboard.add_square(3, 43, 18);
+    blackboard.add_triangle(3, 3, 2);
     
     blackboard.draw();
-    blackboard.shapes();
     blackboard.list();
-    blackboard.undo();
-
-    blackboard.save("test.txt");
-    blackboard.load("test.txt");
-    blackboard.draw();
     return 0;
 }
