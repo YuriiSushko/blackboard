@@ -1,6 +1,8 @@
 #include <iostream>
 using namespace std;
 #include <vector>
+#define RESET   "\033[0m"
+#define RED     "\033[31m"
 
 class Figure{
 public:
@@ -61,8 +63,8 @@ public:
 class blackboard
 {
 private:
-    const int BOARD_WIDTH = 26;
-    const int BOARD_HEIGHT = 12;
+    const int BOARD_WIDTH = 90;
+    const int BOARD_HEIGHT = 50;
 
     vector<vector<char>> grid;
     vector<Figure*> figures;
@@ -72,20 +74,21 @@ public:
     void draw() {
         cout << " ";
         for (int j = 0; j<= BOARD_WIDTH; j++){
-            cout << "-"; 
+            cout << RED << "-" << RESET; 
         }
         cout << "\n";
         for (auto& row : grid) {
-            cout << '|';
+            cout << RED << '|' << RESET;
             for (char c : row) {
                 cout << c;
             }
-            cout << " |\n";
+            cout  << RED << " |\n" << RESET;
         }
         cout << " ";
         for (int j = 0; j<= BOARD_WIDTH; j++){
-            cout << "-"; 
+            cout << RED << "-" << RESET; 
         }
+        cout << '\n';
     }
 
     void add_square(const int& size, const int& x, const int& y){
@@ -106,8 +109,8 @@ public:
 int main() {
     blackboard blackboard;
 
-    blackboard.add_square(9, 6, 10);
-    blackboard.add_square(3, 9, 7);
+    blackboard.add_square(9, 40, 21);
+    blackboard.add_square(3, 43, 18);
     
     blackboard.draw();
 
