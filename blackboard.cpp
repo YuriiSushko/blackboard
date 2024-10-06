@@ -98,14 +98,13 @@ public:
             int posY = y - i;        
 
             
-            if (posY < up_bound) {
-                // Set the left edge of the triangle
+            if ((posY) >= 0 && (posY) <= up_bound) {
                 if (leftMost >= 0 && leftMost < right_bound) {
-                    (*grid)[up_bound - posY - 1][leftMost] = '*';
+                    (*grid)[up_bound - posY][leftMost] = '*';
                 }
             
                 if (rightMost >= 0 && rightMost < right_bound) {
-                    (*grid)[up_bound - posY - 1][rightMost] = '*';
+                    (*grid)[up_bound - posY][rightMost] = '*';
                 }
             }
         }
@@ -114,8 +113,8 @@ public:
         int baseY = y - height + 1; 
         for (int j = 0; j < 2 * height - 1; ++j) {
             int baseX = x + height - 1 - j;
-            if (baseX >= 0 && baseX < right_bound && baseY < up_bound) {
-                (*grid)[up_bound - baseY - 1][baseX] = '*'; 
+            if (baseX >= 0 && baseX < right_bound && (baseY) >= 0 && (baseY) <= up_bound) {
+                (*grid)[up_bound-baseY][baseX] = '*'; 
             }
         }
     }
@@ -254,7 +253,7 @@ int main() {
 
     blackboard.add_square(9, 40, 21);
     blackboard.add_square(3, 43, 18);
-    blackboard.add_triangle(3, 3, 2);
+    blackboard.add_triangle(5, 44, 27);
     
     blackboard.draw();
     blackboard.list();
