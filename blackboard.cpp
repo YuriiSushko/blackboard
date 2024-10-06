@@ -1,6 +1,7 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <fstream>
 using namespace std;
 
 #define RESET   "\033[0m"
@@ -13,18 +14,23 @@ using namespace std;
 
 class Figure{
 public:
-    virtual ~Figure() {};
+    static int id;
+
+    virtual ~Figure() { id--; }
 
     virtual void add(vector<vector<char>>* grid) = 0;
     virtual void get_info() = 0;
 };
 
+int Figure::id = 0;
+
 class Square: public Figure{
 private: 
     int size;
+    int s_id;
     tuple<int,int> coordinates; // coordinates of square top_left
 public:
-    Square(const int& size, const int& x, const int& y): size(size), coordinates(make_tuple(x,y)) {}
+    Square(const int& size, const int& x, const int& y): size(size), coordinates(make_tuple(x,y)), s_id(id++) { }
 
     void add(vector<vector<char>>* grid) override{
         if (size <= 0){
@@ -65,9 +71,51 @@ public:
     }
 
     void get_info() override {
-        cout << "Square: id(" << 4 << "), size(" << size << ">>), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+        cout << "Square: id(" << s_id << "), size(" << size << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
     }
 };
+
+class FileSystem {
+private:
+    string path;
+    vector<vector<char>> grid;
+public:
+    FileSystem(const string& path, vector<vector<char>>& grid): path(path), grid(grid){}
+
+    void save(){
+        ofstream file;
+        file.open(path);
+
+       for (auto& row : grid) {
+            for (char c : row) {
+                file << c;
+            }
+            file << "\n";
+        }
+
+        cout << "File has been successfully saved!\n";
+        file.close();
+    }
+
+    vector<vector<char>> load(){
+        string line;
+        ifstream file (path);
+
+        grid.clear();
+
+        if (file.is_open()){
+            while (getline(file, line)) {
+                vector<char> row(line.begin(), line.end());
+                grid.push_back(row);
+            }
+        }
+        else cout << "Unable to open file"; 
+        file.close();
+        
+        return grid;
+    }
+};
+
 
 class blackboard
 {
@@ -77,6 +125,7 @@ private:
 
     vector<vector<char>> grid;
     vector<unique_ptr<Figure>> figures;
+    vector<vector<char>> previous;
 public:
     blackboard() : grid(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' ')) {}
 
@@ -101,6 +150,8 @@ public:
     }
 
     void add_square(const int& size, const int& x, const int& y){
+        previous = grid;
+
         auto figure = make_unique<Square>(size, x, y);
         figure->add(&grid);
         figures.push_back(move(figure));
@@ -113,7 +164,31 @@ public:
         cout << MAGENTA << "Line:" << YELLOW << " lenght, angle, coordinates" << BLUE << "[x,y]" << RESET << " of left edge\n";
     };
 
+    void list(){
+        for (auto& shape: figures){
+            shape->get_info();
+        }
+    }
 
+    void undo(){
+        figures.pop_back();
+        grid = previous;
+    }
+
+    void clear(){
+        figures.clear();
+        grid = vector<vector<char>>(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' '));
+    }
+
+    void save(const string& filepath){
+        FileSystem fs(filepath, grid);
+        fs.save();
+    }
+
+    void load(const string& filepath){
+        FileSystem fs(filepath, grid);
+        grid = fs.load();
+    }
 };
 
 int main() {
@@ -124,5 +199,11 @@ int main() {
     
     blackboard.draw();
     blackboard.shapes();
+    blackboard.list();
+    blackboard.undo();
+
+    blackboard.save("test.txt");
+    blackboard.load("test.txt");
+    blackboard.draw();
     return 0;
 }
