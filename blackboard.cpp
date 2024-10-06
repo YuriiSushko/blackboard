@@ -106,12 +106,14 @@ public:
         figures.push_back(move(figure));
     } 
 
-    virtual void shapes() {
+    void shapes() {
         cout << MAGENTA << "Square:" << YELLOW << " size, coordinates" << BLUE << "[x,y]" << RESET << " of top left edge\n";
         cout << MAGENTA << "Circle:" << YELLOW << " radius, coordinates" << BLUE << "[x,y]" << RESET << " of centre\n";
         cout << MAGENTA << "Triangle:" << YELLOW << " height, side lenght, coordinates" << BLUE << "[x,y]" << RESET << " of upmost edge\n";
         cout << MAGENTA << "Line:" << YELLOW << " lenght, angle, coordinates" << BLUE << "[x,y]" << RESET << " of left edge\n";
     };
+
+
 };
 
 int main() {
