@@ -22,6 +22,7 @@ public:
 
     virtual void add(vector<vector<char>>* grid) = 0;
     virtual void get_info() = 0;
+    virtual const bool get_placement() = 0;
 };
 
 int Figure::id = 0;
@@ -31,6 +32,7 @@ private:
     int size;
     int s_id;
     tuple<int,int> coordinates; // coordinates of square top_left
+    bool if_outside;
 public:
     Square(const int& size, const int& x, const int& y): size(size), coordinates(make_tuple(x,y)), s_id(id++) { }
 
@@ -45,6 +47,12 @@ public:
 
         int up_bound = grid[0].size();
         int right_bound = grid[0][0].size();
+
+        if_outside = y+size > up_bound || y < 0 || x + size < 0 || x > right_bound; 
+
+        if (if_outside){
+            return;
+        }
 
         for (int i = 0; i < size; i++) {
             int current_row = y - i;
@@ -75,6 +83,10 @@ public:
     void get_info() override {
         cout << "Square: id(" << s_id << "), size(" << size << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
     }
+
+    const bool get_placement() override{
+        return if_outside;
+    }
 };
 
 class Triangle: public Figure{
@@ -82,6 +94,7 @@ private:
     int height;
     int s_id;
     tuple<int,int> coordinates;
+    bool if_outside;
 public:
     Triangle(const int& height, const int& x, const int& y): height(height), coordinates(make_tuple(x,y)), s_id(id++) {}
 
@@ -93,6 +106,12 @@ public:
 
         int up_bound = grid[0].size();
         int right_bound = grid[0][0].size();
+
+        if_outside = y+height > up_bound || y < 0 || x + height/2 < 0 || x-height/2 > right_bound; 
+
+        if (if_outside){
+            return;
+        }
 
         for (int i = 0; i < height; ++i) {
             int leftMost = x - i;    
@@ -124,6 +143,10 @@ public:
     void get_info() override {
         cout << "Triangle: id(" << s_id << "), height(" << height << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
     }
+
+    const bool get_placement() override{
+        return if_outside;
+    }
 };
 
 class Circle: public Figure{
@@ -131,6 +154,7 @@ private:
     int radius;
     int s_id;
     tuple<int, int> coordinates;
+    bool if_outside;
 public:
     Circle(const int& radius, const int& x, const int& y): radius(radius), coordinates(make_tuple(x,y)), s_id(id++) {}
 
@@ -146,6 +170,12 @@ public:
         int up_bound = grid[0].size();
         int right_bound = grid[0][0].size();
 
+        if_outside = y+radius > up_bound || y-radius < 0 || x + radius < 0 || x - radius  > right_bound; 
+
+        if (if_outside){
+            return;
+        }
+
         for (double t = 0.0; t < 6.3; t+=0.1){
             int x_draw = (int)(radius * sin(t) + x);
             int y_draw = (int)(radius * cos(t) + y);
@@ -159,6 +189,10 @@ public:
     void get_info() override {
         cout << "Circle: id(" << s_id << "), radius(" << radius << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
     }
+
+    const bool get_placement() override{
+        return if_outside;
+    }
 };
 
 class Line: public Figure{
@@ -167,6 +201,7 @@ private:
     int angle;
     int s_id;
     tuple<int, int> coordinates;
+    bool if_outside;
 public:
     Line(const int& length, const int& angle, const int& x, const int& y): length(length), angle(angle), coordinates(make_tuple(x,y)), s_id(id++) {}
 
@@ -184,6 +219,12 @@ public:
 
         double rad_angle = angle * 3.14 / 180.0;
 
+        if_outside = y + (int)(length * sin(rad_angle)) > up_bound || y-(int)(length * sin(rad_angle)) < 0 || x + (int)(length * cos(rad_angle)) < 0 || x > right_bound; 
+
+        if (if_outside){
+            return;
+        }
+
         for (int i = 0; i < length; ++i) {
             int x_draw = x + (int)(i * cos(rad_angle));
             int y_draw = y + (int)(i * sin(rad_angle));
@@ -196,6 +237,10 @@ public:
 
     void get_info() override {
         cout << "Line: id(" << s_id << "), length(" << length << "), angle(" << angle << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+    }
+
+    const bool get_placement() override{
+        return if_outside;
     }
 };
 
@@ -278,6 +323,12 @@ public:
 
         auto figure = make_unique<Square>(size, x, y);
         figure->add(&grid);
+
+        if (figure.get()->get_placement()){
+            cout << "Figure is outside the box\n";
+            return;
+        }
+
         figures.push_back(move(figure));
     } 
 
@@ -286,6 +337,12 @@ public:
 
         auto figure = make_unique<Triangle>(height, x, y);
         figure->add(&grid);
+
+        if (figure.get()->get_placement()){
+            cout << "Figure is outside the box\n";
+            return;
+        }
+
         figures.push_back(move(figure));
     } 
 
@@ -294,6 +351,12 @@ public:
 
         auto figure = make_unique<Circle>(radius, x, y);
         figure->add(&grid);
+
+        if (figure.get()->get_placement()){
+            cout << "Figure is outside the box\n";
+            return;
+        }
+
         figures.push_back(move(figure));        
     }
 
@@ -302,6 +365,12 @@ public:
 
         auto figure = make_unique<Line>(length, angle, x, y);
         figure->add(&grid);
+
+        if (figure.get()->get_placement()){
+            cout << "Figure is outside the box\n";
+            return;
+        }
+
         figures.push_back(move(figure));     
     }
 
