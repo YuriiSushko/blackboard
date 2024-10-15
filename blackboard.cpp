@@ -36,6 +36,7 @@ public:
     virtual const char* get_color() const = 0;
     virtual int get_id() const = 0;
     virtual string get_type() const = 0;
+    virtual void set_color(pair<char, const char*> color) = 0;
 };
 
 int Figure::id = 0;
@@ -209,6 +210,11 @@ public:
     
     string get_type() const override{
         return "Square";
+    }
+
+    void set_color(pair<char, const char*> color) override{
+        display_color = color.second;
+        display_char = color.first;
     }
 };
 
@@ -639,9 +645,11 @@ public:
             }
 
         } else {
-        cout << "Selected figure is not a square.\n";
+        cout << "Selected figure is not a square.\n"; }
     }
 
+    void paint(const string& new_color){
+        selected_figure->set_color(ALLOWED_COLORS[new_color]);
     }
 };
 
@@ -779,6 +787,9 @@ public:
     }
     else if(command == "edit"){
         blackboard->edit(stoi(parts[1]));
+    }
+    else if(command == "paint"){
+        blackboard->paint(parts[1]);
     }
     else if (command == "select"){
         if(parts.size() == 3){
