@@ -4,6 +4,7 @@
 #include <fstream>
 #include <cmath>
 #include <cctype> 
+#include <sstream>
 using namespace std;
 
 #define RESET   "\033[0m"
@@ -21,7 +22,7 @@ public:
     virtual ~Figure() { id--; }
 
     virtual void add(vector<vector<char>>* grid) = 0;
-    virtual void get_info() = 0;
+    virtual const string get_info() = 0;
     virtual const bool get_placement() = 0;
 };
 
@@ -80,8 +81,11 @@ public:
         }
     }
 
-    void get_info() override {
-        cout << "Square: id(" << s_id << "), size(" << size << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+    const string get_info() override {
+        stringstream info;
+        info << "Square: id(" << s_id << "), size(" << size << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+        cout << info.str();
+        return info.str();
     }
 
     const bool get_placement() override{
@@ -140,8 +144,11 @@ public:
         }
     }
 
-    void get_info() override {
-        cout << "Triangle: id(" << s_id << "), height(" << height << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+    const string get_info() override {
+        stringstream info;
+        info << "Triangle: id(" << s_id << "), height(" << height << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+        cout << info.str();
+        return info.str();
     }
 
     const bool get_placement() override{
@@ -186,8 +193,11 @@ public:
         }
     }
 
-    void get_info() override {
-        cout << "Circle: id(" << s_id << "), radius(" << radius << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+    const string get_info() override {
+        stringstream info;
+        info << "Circle: id(" << s_id << "), radius(" << radius << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+        cout << info.str();
+        return info.str();
     }
 
     const bool get_placement() override{
@@ -235,8 +245,11 @@ public:
         }
     }
 
-    void get_info() override {
-        cout << "Line: id(" << s_id << "), length(" << length << "), angle(" << angle << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+    const string get_info() override {
+        stringstream info;
+        info << "Line: id(" << s_id << "), length(" << length << "), angle(" << angle << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+        cout << info.str();
+        return info.str();
     }
 
     const bool get_placement() override{
@@ -248,25 +261,27 @@ class FileSystem {
 private:
     string path;
     vector<vector<char>> grid;
+    Blackboard* blackboard;
 public:
-    FileSystem(const string& path, vector<vector<char>>& grid): path(path), grid(grid){}
+    FileSystem(const string& path, Blackboard* blackboard): path(path), blackboard(blackboard){}
 
     void save(){
         ofstream file;
         file.open(path);
+        vector<string> figure_list = blackboard->list();
 
-       for (auto& row : grid) {
-            for (char c : row) {
-                file << c;
+        if (figure_list.size() != 0){
+            for (auto figure : figure_list){
+                file << figure;
             }
-            file << "\n";
         }
+        else file << 0;
 
         cout << "File has been successfully saved!\n";
         file.close();
     }
 
-    vector<vector<char>> load(){
+    void load(){
         string line;
         ifstream file (path);
 
@@ -274,14 +289,57 @@ public:
 
         if (file.is_open()){
             while (getline(file, line)) {
-                vector<char> row(line.begin(), line.end());
-                grid.push_back(row);
+                if(line[0] == '0'){
+                    blackboard->clear();
+                }
+                else{
+                    blackboard->clear();
+
+                    string figure;
+                    string label;
+                    string id;
+                    char comma;
+                    int first_param;
+                    int second_param;
+                    int x;
+                    int y;
+
+                    stringstream ss(line);
+                    ss >> figure;
+                    figure.pop_back();
+                    ss >> id;
+                    
+                    if (figure == "Square"){
+                        ss >> label >> first_param;
+                        ss >> label >> x >> comma >> y;
+                        blackboard->add_square(first_param, x, y);
+                    }
+                    else if (figure == "Circle"){
+                        ss >> label >> first_param;
+                        ss >> label >> x >> comma >> y;
+                        blackboard->add_circle(first_param, x, y);
+                    }
+                    else if (figure == "Triangle"){
+                        ss >> label >> first_param;
+                        ss >> label >> x >> comma >> y;
+                        blackboard->add_triangle(first_param, x, y);
+                    }
+                    else if (figure == "Line"){
+                        ss >> label >> first_param;
+                        ss >> label >> second_param;
+                        ss >> label >> x >> comma >> y;
+                        blackboard->add_line(first_param, second_param, x, y);
+                    }
+                    else {
+                        cout << "File structure damaged\n";
+                        file.close();
+                        return;
+                    }
+                }
             }
         }
         else cout << "Unable to open file"; 
         file.close();
-        
-        return grid;
     }
 };
 
@@ -381,13 +439,16 @@ public:
         cout << MAGENTA << "Line:" << YELLOW << " length, angle, coordinates" << BLUE << "[x,y]" << RESET << " of left edge\n";
     };
 
-    void list(){
+    const vector<string> list(){
+        vector<string> figures_info;
         if(figures.size() > 0){
             for (auto& shape: figures){
-                shape->get_info();
+                figures_info.push_back(shape->get_info());
             }
         }
-        else cout << " No figures on board\n";        
+        else cout << " No figures on board\n";
+
+        return figures_info;        
     }
 
     void undo(){
@@ -404,20 +465,20 @@ public:
     }
 
     void save(const string& filepath){
-        FileSystem fs(filepath, grid);
+        FileSystem fs(filepath, this);
         fs.save();
     }
 
     void load(const string& filepath){
-        FileSystem fs(filepath, grid);
-        grid = fs.load();
+        FileSystem fs(filepath, this);
+        fs.load();
     }
 };
 
 
 class Parser {
 private:
-    Blackboard blackboard;
+    Blackboard* blackboard;
     vector<string> split(string& str, const string& delimiter) {
         vector<std::string> tokens;
         size_t pos = 0;
@@ -433,6 +494,8 @@ private:
     }
 
 public:
+     Parser(Blackboard* blackboard) : blackboard(blackboard) {}
+
     void parse_command(string& command_line) {
     vector<string> parts = split(command_line, " ");
     if (parts.empty()) {
@@ -443,29 +506,29 @@ public:
     string command = parts[0];
 
     if (command == "draw"){
-        blackboard.draw();
+        blackboard->draw();
     }
     else if (command == "list"){
-        blackboard.list();
+        blackboard->list();
     }
     else if (command == "shapes"){
-        blackboard.shapes();
+        blackboard->shapes();
     }
     else if (command == "undo"){
-        blackboard.undo();
+        blackboard->undo();
     }
     else if (command == "clear"){
-        blackboard.clear();
+        blackboard->clear();
     }
     else if (command == "save"){
         if(parts.size() > 1)
-            blackboard.save(parts[1]);
+            blackboard->save(parts[1]);
         else 
             cout << "Please provide a filename to save.\n";
     } 
     else if (command == "load"){
         if(parts.size() > 1)
-            blackboard.load(parts[1]);
+            blackboard->load(parts[1]);
         else 
             cout << "Please provide a filename to load.\n";
     }
@@ -481,7 +544,7 @@ public:
                 int size = stoi(parts[2]);
                 int x = stoi(parts[3]);
                 int y = stoi(parts[4]);
-                blackboard.add_square(size, x, y);
+                blackboard->add_square(size, x, y);
             } catch (exception& e) {
                 cout << "Please, provide only valid integers\n";
             }
@@ -492,7 +555,7 @@ public:
                 int radius = stoi(parts[2]);
                 int x = stoi(parts[3]);
                 int y = stoi(parts[4]);
-                blackboard.add_circle(radius, x, y);
+                blackboard->add_circle(radius, x, y);
             } catch (exception& e) {
                 cout << "Please, provide only valid integers\n";
             }
@@ -503,7 +566,7 @@ public:
                 int height = stoi(parts[2]);
                 int x = stoi(parts[3]);
                 int y = stoi(parts[4]);
-                blackboard.add_triangle(height, x, y);
+                blackboard->add_triangle(height, x, y);
             } catch (exception& e) {
                 cout << "Please, provide only valid integers\n";
             }
@@ -515,7 +578,7 @@ public:
                 int angle = stoi(parts[3]);
                 int x = stoi(parts[4]);
                 int y = stoi(parts[5]);
-                blackboard.add_line(length, angle, x, y);
+                blackboard->add_line(length, angle, x, y);
             } catch (exception& e) {
                 cout << "Please, provide only valid integers\n";
             }
@@ -534,8 +597,9 @@ public:
 class Engine {
 public:
     void run() {
+        Blackboard blackboard;
         string input;
-        Parser parser;
+        Parser parser(&blackboard);
         while (true) {
             cout << "Enter command: ";
             getline(cin, input);
