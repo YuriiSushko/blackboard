@@ -5,15 +5,21 @@
 #include <cmath>
 #include <cctype> 
 #include <sstream>
+#include <map>
 using namespace std;
 
-#define RESET   "\033[0m"
-#define RED     "\033[31m"
-#define GREEN   "\033[32m"
-#define YELLOW  "\033[33m"
-#define BLUE    "\033[34m"
+#define RED    "\033[31m"
+#define GREEN  "\033[32m"
+#define BLUE   "\033[34m"
+#define YELLOW "\033[33m"
+#define BLACK  "\033[30m"
+#define WHITE  "\033[37m"
+#define CYAN   "\033[36m"
 #define MAGENTA "\033[35m"
-#define CYAN    "\033[36m"
+#define PURPLE "\033[35m"
+#define RESET  "\033[0m"
+
+class Cell;
 
 class Figure{
 public:
@@ -21,7 +27,7 @@ public:
 
     virtual ~Figure() { id--; }
 
-    virtual void add(vector<vector<char>>* grid) = 0;
+    virtual void add(vector<vector<weak_ptr<Cell>>>* grid) = 0;
     virtual const string get_info() = 0;
     virtual const bool get_placement() = 0;
     virtual bool operator==(const Figure& other) const = 0;
@@ -29,16 +35,42 @@ public:
 
 int Figure::id = 0;
 
+class Cell{
+private:
+    vector<Figure*> figures;
+    char symbol;
+    const char* color;
+public:
+    Cell(const char* symbol, const char* color) : symbol(*symbol), color(color) {}
+
+    void addFigure(Figure* figure) {
+        figures.push_back(figure);
+    }
+    
+    char get_symbol(){
+        return symbol;
+    }
+
+    const char* get_color(){
+        return color;
+    }
+};
+
 class Square: public Figure{
 private: 
     int size;
     int s_id;
     tuple<int,int> coordinates; // coordinates of square top_left
     bool if_outside;
+    pair<char, const char*> color;
+    char display_char;
+    const char* display_color;
+    vector<shared_ptr<Cell>> occupiedCells;
 public:
-    Square(const int& size, const int& x, const int& y): size(size), coordinates(make_tuple(x,y)), s_id(id++) { }
+    Square(pair<char, const char*> color, const int& size, const int& x, const int& y): size(size), coordinates(make_tuple(x,y)), s_id(id++),
+     display_char(color.first), display_color(color.second) { }
 
-    void add(vector<vector<char>>* grid) override{
+    void add(vector<vector<weak_ptr<Cell>>>* grid) override{
         if (size <= 0){
             cerr << "Please, provide positive numbers for size\n";
             return;
@@ -62,8 +94,14 @@ public:
             if (current_row >= 0 && current_row < up_bound) {
                 if (i==0 || i == size-1) {
                     for (int j = x; j < x + size; j++) {
-                        if (j >= 0 && j <= right_bound){
-                            (*grid)[up_bound - current_row-1][j] = '*';
+                        if (j >= 0 && j < right_bound){
+                            shared_ptr<Cell> cell = (*grid)[up_bound - current_row - 1][j].lock();
+
+                            if (!cell) {
+                                cell = make_shared<Cell>(&display_char, display_color);
+                                (*grid)[up_bound - current_row - 1][j] = cell;
+                                occupiedCells.push_back(cell);  
+                            }
                         }
                     }
                     continue;
@@ -71,11 +109,23 @@ public:
             }
 
             if (current_row >= 0 && current_row < up_bound){
-                if (x >= 0 && x <= right_bound) {
-                    (*grid)[up_bound - current_row - 1][x] = '*';
+                if (x >= 0 && x < right_bound) {
+                    shared_ptr<Cell> cell = (*grid)[up_bound - current_row - 1][x].lock();
+
+                    if (!cell) {
+                        cell = make_shared<Cell>(&display_char, display_color);
+                        (*grid)[up_bound - current_row - 1][x] = cell;
+                        occupiedCells.push_back(cell);
+                    }
                 }
-                if (x + size - 1 >= 0 && x + size - 1 <= right_bound) {
-                    (*grid)[up_bound - current_row - 1][x + size -1] = '*';
+                if (x + size - 1 >= 0 && x + size - 1 < right_bound) {
+                    shared_ptr<Cell> cell = (*grid)[up_bound - current_row - 1][x+size-1].lock();
+
+                    if (!cell) {
+                        cell = make_shared<Cell>(&display_char, display_color);
+                        (*grid)[up_bound - current_row - 1][x+size-1] = cell;
+                        occupiedCells.push_back(cell);
+                    }
                 }
             }
             
@@ -102,193 +152,193 @@ public:
     }
 };
 
-class Triangle: public Figure{
-private:
-    int height;
-    int s_id;
-    tuple<int,int> coordinates;
-    bool if_outside;
-public:
-    Triangle(const int& height, const int& x, const int& y): height(height), coordinates(make_tuple(x,y)), s_id(id++) {}
+// class Triangle: public Figure{
+// private:
+//     int height;
+//     int s_id;
+//     tuple<int,int> coordinates;
+//     bool if_outside;
+// public:
+//     Triangle(const int& height, const int& x, const int& y): height(height), coordinates(make_tuple(x,y)), s_id(id++) {}
 
-    void add(vector<vector<char>>* grid) override{
-        if (height <= 0) return;
+//     void add(vector<vector<char>>* grid) override{
+//         if (height <= 0) return;
         
-        int x = get<0>(coordinates); 
-        int y = get<1>(coordinates); 
+//         int x = get<0>(coordinates); 
+//         int y = get<1>(coordinates); 
 
-        int up_bound = grid[0].size();
-        int right_bound = grid[0][0].size();
+//         int up_bound = grid[0].size();
+//         int right_bound = grid[0][0].size();
 
-        if_outside = y+height > up_bound || y < 0 || x + height/2 < 0 || x-height/2 > right_bound; 
+//         if_outside = y+height > up_bound || y < 0 || x + height/2 < 0 || x-height/2 > right_bound; 
 
-        if (if_outside){
-            return;
-        }
+//         if (if_outside){
+//             return;
+//         }
 
-        for (int i = 0; i < height; ++i) {
-            int leftMost = x - i;    
-            int rightMost = x + i;   
-            int posY = y - i;        
+//         for (int i = 0; i < height; ++i) {
+//             int leftMost = x - i;    
+//             int rightMost = x + i;   
+//             int posY = y - i;        
 
             
-            if ((posY) >= 0 && (posY) <= up_bound) {
-                if (leftMost >= 0 && leftMost < right_bound) {
-                    (*grid)[up_bound - posY][leftMost] = '*';
-                }
+//             if ((posY) >= 0 && (posY) <= up_bound) {
+//                 if (leftMost >= 0 && leftMost < right_bound) {
+//                     (*grid)[up_bound - posY][leftMost] = '*';
+//                 }
             
-                if (rightMost >= 0 && rightMost < right_bound) {
-                    (*grid)[up_bound - posY][rightMost] = '*';
-                }
-            }
-        }
+//                 if (rightMost >= 0 && rightMost < right_bound) {
+//                     (*grid)[up_bound - posY][rightMost] = '*';
+//                 }
+//             }
+//         }
 
     
-        int baseY = y - height + 1; 
-        for (int j = 0; j < 2 * height - 1; ++j) {
-            int baseX = x + height - 1 - j;
-            if (baseX >= 0 && baseX < right_bound && (baseY) >= 0 && (baseY) <= up_bound) {
-                (*grid)[up_bound-baseY][baseX] = '*'; 
-            }
-        }
-    }
+//         int baseY = y - height + 1; 
+//         for (int j = 0; j < 2 * height - 1; ++j) {
+//             int baseX = x + height - 1 - j;
+//             if (baseX >= 0 && baseX < right_bound && (baseY) >= 0 && (baseY) <= up_bound) {
+//                 (*grid)[up_bound-baseY][baseX] = '*'; 
+//             }
+//         }
+//     }
 
-    const string get_info() override {
-        stringstream info;
-        info << "Triangle: id(" << s_id << "), height( " << height << " ), coordinates( " << get<0>(coordinates) << "," << get<1>(coordinates) << " )\n";
-        cout << info.str();
-        return info.str();
-    }
+//     const string get_info() override {
+//         stringstream info;
+//         info << "Triangle: id(" << s_id << "), height( " << height << " ), coordinates( " << get<0>(coordinates) << "," << get<1>(coordinates) << " )\n";
+//         cout << info.str();
+//         return info.str();
+//     }
 
-    const bool get_placement() override{
-        return if_outside;
-    }
+//     const bool get_placement() override{
+//         return if_outside;
+//     }
 
-    bool operator==(const Figure& other) const override{
-        const Triangle* otherFigure = dynamic_cast<const Triangle*>(&other);
-        if (otherFigure){
-            return height == otherFigure->height && coordinates == otherFigure->coordinates;
-        }
-        return false;
-    }
-};
+//     bool operator==(const Figure& other) const override{
+//         const Triangle* otherFigure = dynamic_cast<const Triangle*>(&other);
+//         if (otherFigure){
+//             return height == otherFigure->height && coordinates == otherFigure->coordinates;
+//         }
+//         return false;
+//     }
+// };
 
-class Circle: public Figure{
-private:
-    int radius;
-    int s_id;
-    tuple<int, int> coordinates;
-    bool if_outside;
-public:
-    Circle(const int& radius, const int& x, const int& y): radius(radius), coordinates(make_tuple(x,y)), s_id(id++) {}
+// class Circle: public Figure{
+// private:
+//     int radius;
+//     int s_id;
+//     tuple<int, int> coordinates;
+//     bool if_outside;
+// public:
+//     Circle(const int& radius, const int& x, const int& y): radius(radius), coordinates(make_tuple(x,y)), s_id(id++) {}
 
-    void add(vector<vector<char>>* grid) override{
-        if (radius <= 0){
-            cerr << "Please, provide positive numbers for size\n";
-            return;
-        }
+//     void add(vector<vector<char>>* grid) override{
+//         if (radius <= 0){
+//             cerr << "Please, provide positive numbers for size\n";
+//             return;
+//         }
         
-        int x = get<0>(coordinates); 
-        int y = get<1>(coordinates); 
+//         int x = get<0>(coordinates); 
+//         int y = get<1>(coordinates); 
 
-        int up_bound = grid[0].size();
-        int right_bound = grid[0][0].size();
+//         int up_bound = grid[0].size();
+//         int right_bound = grid[0][0].size();
 
-        if_outside = y+radius > up_bound || y-radius < 0 || x + radius < 0 || x - radius  > right_bound; 
+//         if_outside = y+radius > up_bound || y-radius < 0 || x + radius < 0 || x - radius  > right_bound; 
 
-        if (if_outside){
-            return;
-        }
+//         if (if_outside){
+//             return;
+//         }
 
-        for (double t = 0.0; t < 6.3; t+=0.1){
-            int x_draw = (int)(radius * sin(t) + x);
-            int y_draw = (int)(radius * cos(t) + y);
+//         for (double t = 0.0; t < 6.3; t+=0.1){
+//             int x_draw = (int)(radius * sin(t) + x);
+//             int y_draw = (int)(radius * cos(t) + y);
             
-            if(x_draw>0 && x_draw < right_bound && up_bound - y_draw > 0 && y_draw>0){
-                (*grid)[up_bound - y_draw][x_draw] = '*';                
-            }
-        }
-    }
+//             if(x_draw>0 && x_draw < right_bound && up_bound - y_draw > 0 && y_draw>0){
+//                 (*grid)[up_bound - y_draw][x_draw] = '*';                
+//             }
+//         }
+//     }
 
-    const string get_info() override {
-        stringstream info;
-        info << "Circle: id(" << s_id << "), radius( " << radius << " ), coordinates( " << get<0>(coordinates) << "," << get<1>(coordinates) << " )\n";
-        cout << info.str();
-        return info.str();
-    }
+//     const string get_info() override {
+//         stringstream info;
+//         info << "Circle: id(" << s_id << "), radius( " << radius << " ), coordinates( " << get<0>(coordinates) << "," << get<1>(coordinates) << " )\n";
+//         cout << info.str();
+//         return info.str();
+//     }
 
-    const bool get_placement() override{
-        return if_outside;
-    }
+//     const bool get_placement() override{
+//         return if_outside;
+//     }
 
-    bool operator==(const Figure& other) const override{
-        const Circle* otherFigure = dynamic_cast<const Circle*>(&other);
-        if (otherFigure){
-            return radius == otherFigure->radius && coordinates == otherFigure->coordinates;
-        }
-        return false;
-    }
-};
+//     bool operator==(const Figure& other) const override{
+//         const Circle* otherFigure = dynamic_cast<const Circle*>(&other);
+//         if (otherFigure){
+//             return radius == otherFigure->radius && coordinates == otherFigure->coordinates;
+//         }
+//         return false;
+//     }
+// };
 
-class Line: public Figure{
-private:
-    int length;
-    int angle;
-    int s_id;
-    tuple<int, int> coordinates;
-    bool if_outside;
-public:
-    Line(const int& length, const int& angle, const int& x, const int& y): length(length), angle(angle), coordinates(make_tuple(x,y)), s_id(id++) {}
+// class Line: public Figure{
+// private:
+//     int length;
+//     int angle;
+//     int s_id;
+//     tuple<int, int> coordinates;
+//     bool if_outside;
+// public:
+//     Line(const int& length, const int& angle, const int& x, const int& y): length(length), angle(angle), coordinates(make_tuple(x,y)), s_id(id++) {}
 
-    void add(vector<vector<char>>* grid) override{
-        if (length < 0 || angle < 0) {
-            cerr << "Please, provide positive numbers for size\n";
-            return;
-        } 
+//     void add(vector<vector<char>>* grid) override{
+//         if (length < 0 || angle < 0) {
+//             cerr << "Please, provide positive numbers for size\n";
+//             return;
+//         } 
 
-        int x = get<0>(coordinates); 
-        int y = get<1>(coordinates); 
+//         int x = get<0>(coordinates); 
+//         int y = get<1>(coordinates); 
 
-        int up_bound = grid[0].size();
-        int right_bound = grid[0][0].size();
+//         int up_bound = grid[0].size();
+//         int right_bound = grid[0][0].size();
 
-        double rad_angle = angle * 3.14 / 180.0;
+//         double rad_angle = angle * 3.14 / 180.0;
 
-        if_outside = y + (int)(length * sin(rad_angle)) > up_bound || y-(int)(length * sin(rad_angle)) < 0 || x + (int)(length * cos(rad_angle)) < 0 || x > right_bound; 
+//         if_outside = y + (int)(length * sin(rad_angle)) > up_bound || y-(int)(length * sin(rad_angle)) < 0 || x + (int)(length * cos(rad_angle)) < 0 || x > right_bound; 
 
-        if (if_outside){
-            return;
-        }
+//         if (if_outside){
+//             return;
+//         }
 
-        for (int i = 0; i < length; ++i) {
-            int x_draw = x + (int)(i * cos(rad_angle));
-            int y_draw = y + (int)(i * sin(rad_angle));
+//         for (int i = 0; i < length; ++i) {
+//             int x_draw = x + (int)(i * cos(rad_angle));
+//             int y_draw = y + (int)(i * sin(rad_angle));
 
-            if (x_draw > 0 && x_draw < right_bound && up_bound - y_draw > 0 && y_draw > 0) {
-                (*grid)[up_bound - y_draw][x_draw] = '*';
-            }
-        }
-    }
+//             if (x_draw > 0 && x_draw < right_bound && up_bound - y_draw > 0 && y_draw > 0) {
+//                 (*grid)[up_bound - y_draw][x_draw] = '*';
+//             }
+//         }
+//     }
 
-    const string get_info() override {
-        stringstream info;
-        info << "Line: id(" << s_id << "), length( " << length << " ), angle( " << angle << " ), coordinates( " << get<0>(coordinates) << "," << get<1>(coordinates) << " )\n";
-        cout << info.str();
-        return info.str();
-    }
+//     const string get_info() override {
+//         stringstream info;
+//         info << "Line: id(" << s_id << "), length( " << length << " ), angle( " << angle << " ), coordinates( " << get<0>(coordinates) << "," << get<1>(coordinates) << " )\n";
+//         cout << info.str();
+//         return info.str();
+//     }
 
-    const bool get_placement() override{
-        return if_outside;
-    }
+//     const bool get_placement() override{
+//         return if_outside;
+//     }
 
-    bool operator==(const Figure& other) const override{
-        const Line* otherFigure = dynamic_cast<const Line*>(&other);
-        if (otherFigure){
-            return angle == otherFigure->angle && length == otherFigure->length && coordinates == otherFigure->coordinates;
-        }
-        return false;
-    }
-};
+//     bool operator==(const Figure& other) const override{
+//         const Line* otherFigure = dynamic_cast<const Line*>(&other);
+//         if (otherFigure){
+//             return angle == otherFigure->angle && length == otherFigure->length && coordinates == otherFigure->coordinates;
+//         }
+//         return false;
+//     }
+// };
 
 class Blackboard
 {
@@ -296,11 +346,25 @@ private:
     const int BOARD_WIDTH = 90;
     const int BOARD_HEIGHT = 50;
 
-    vector<vector<char>> grid;
+    map<string, pair<char, const char*>> ALLOWED_COLORS = {
+        {"red", {'r', RED}},
+        {"green", {'g', GREEN}},
+        {"blue", {'b', BLUE}},
+        {"yellow", {'y', YELLOW}},
+        {"black", {'k', BLACK}},
+        {"white", {'w', WHITE}},
+        {"cyan", {'c', CYAN}},
+        {"magenta", {'m', MAGENTA}},
+        {"purple", {'p', PURPLE}}
+    };
+
+    vector<vector<weak_ptr<Cell>>> grid;;
     vector<unique_ptr<Figure>> figures;
-    vector<vector<char>> previous;
+    vector<vector<weak_ptr<Cell>>> previous;
 public:
-    Blackboard() : grid(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' ')) {}
+    Blackboard() : grid(BOARD_HEIGHT, vector<weak_ptr<Cell>>(BOARD_WIDTH)), 
+                    previous(BOARD_HEIGHT, vector<weak_ptr<Cell>>(BOARD_WIDTH)) {}
+
 
     void draw() {
         cout << " ";
@@ -310,8 +374,16 @@ public:
         cout << "\n";
         for (auto& row : grid) {
             cout << RED << '|' << RESET;
-            for (char c : row) {
-                cout << c;
+            for (auto& c : row) {
+
+                shared_ptr<Cell> cell = c.lock();
+
+                if (cell!=nullptr){
+                    cout << cell->get_color() << cell->get_symbol(); 
+                }
+                else{
+                    cout << " ";
+                }
             }
             cout  << RED << " |\n" << RESET;
         }
@@ -322,10 +394,10 @@ public:
         cout << '\n';
     }
 
-    void add_square(const int& size, const int& x, const int& y){
+    void add_square(const string& color, const int& size, const int& x, const int& y){
         previous = grid;
 
-        auto new_figure = make_unique<Square>(size, x, y);
+        auto new_figure = make_unique<Square>(ALLOWED_COLORS[color],size, x, y);
 
         for (const auto& figure : figures) {
             Square* existing_square = dynamic_cast<Square*>(figure.get());
@@ -344,71 +416,71 @@ public:
         figures.push_back(move(new_figure));
     } 
 
-    void add_triangle(const int& height, const int& x, const int& y){
-        previous = grid;
+    // void add_triangle(const int& height, const int& x, const int& y){
+    //     previous = grid;
 
-        auto new_figure = make_unique<Triangle>(height, x, y);
+    //     auto new_figure = make_unique<Triangle>(height, x, y);
 
-        for (const auto& figure : figures) {
-            Triangle* existing_triangle = dynamic_cast<Triangle*>(figure.get());
-            if (existing_triangle && *existing_triangle == *new_figure) {
-                cout << "Same figure exists\n";
-                return;
-            }
-        }
-        new_figure->add(&grid);
+    //     for (const auto& figure : figures) {
+    //         Triangle* existing_triangle = dynamic_cast<Triangle*>(figure.get());
+    //         if (existing_triangle && *existing_triangle == *new_figure) {
+    //             cout << "Same figure exists\n";
+    //             return;
+    //         }
+    //     }
+    //     new_figure->add(&grid);
 
-        if (new_figure.get()->get_placement()){
-            cout << "Figure is outside the box\n";
-            return;
-        }
+    //     if (new_figure.get()->get_placement()){
+    //         cout << "Figure is outside the box\n";
+    //         return;
+    //     }
 
-        figures.push_back(move(new_figure));  
-    } 
+    //     figures.push_back(move(new_figure));  
+    // } 
 
-    void add_circle(const int& radius, const int& x, const int& y){
-        previous = grid;
+    // void add_circle(const int& radius, const int& x, const int& y){
+    //     previous = grid;
 
-        auto new_figure = make_unique<Circle>(radius, x, y);
+    //     auto new_figure = make_unique<Circle>(radius, x, y);
 
-        for (const auto& figure : figures) {
-            Circle* existing_circle = dynamic_cast<Circle*>(figure.get());
-            if (existing_circle && *existing_circle == *new_figure) {
-                cout << "Same figure exists\n";
-                return;
-            }
-        }
-        new_figure->add(&grid);
+    //     for (const auto& figure : figures) {
+    //         Circle* existing_circle = dynamic_cast<Circle*>(figure.get());
+    //         if (existing_circle && *existing_circle == *new_figure) {
+    //             cout << "Same figure exists\n";
+    //             return;
+    //         }
+    //     }
+    //     new_figure->add(&grid);
 
-        if (new_figure.get()->get_placement()){
-            cout << "Figure is outside the box\n";
-            return;
-        }
+    //     if (new_figure.get()->get_placement()){
+    //         cout << "Figure is outside the box\n";
+    //         return;
+    //     }
 
-        figures.push_back(move(new_figure));       
-    }
+    //     figures.push_back(move(new_figure));       
+    // }
 
-    void add_line(const int& length, const int& angle, const int& x, const int& y){
-        previous = grid;
+    // void add_line(const int& length, const int& angle, const int& x, const int& y){
+    //     previous = grid;
 
-        auto new_figure = make_unique<Line>(length, angle, x, y);
+    //     auto new_figure = make_unique<Line>(length, angle, x, y);
 
-        for (const auto& figure : figures) {
-            Line* existing_line = dynamic_cast<Line*>(figure.get());
-            if (existing_line && *existing_line == *new_figure) {
-                cout << "Same figure exists\n";
-                return;
-            }
-        }
-        new_figure->add(&grid);
+    //     for (const auto& figure : figures) {
+    //         Line* existing_line = dynamic_cast<Line*>(figure.get());
+    //         if (existing_line && *existing_line == *new_figure) {
+    //             cout << "Same figure exists\n";
+    //             return;
+    //         }
+    //     }
+    //     new_figure->add(&grid);
 
-        if (new_figure.get()->get_placement()){
-            cout << "Figure is outside the box\n";
-            return;
-        }
+    //     if (new_figure.get()->get_placement()){
+    //         cout << "Figure is outside the box\n";
+    //         return;
+    //     }
 
-        figures.push_back(move(new_figure));     
-    }
+    //     figures.push_back(move(new_figure));     
+    // }
 
     void shapes() {
         cout << MAGENTA << "Square:" << YELLOW << " size, coordinates" << BLUE << "[x,y]" << RESET << " of top left edge\n";
@@ -439,7 +511,6 @@ public:
 
     void clear(){
         figures.clear();
-        grid = vector<vector<char>>(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' '));
     }
 };
 
@@ -481,10 +552,10 @@ public:
                 else{
 
                     string figure;
-                    string label;
+                    string label, first_param;
                     string id;
                     char paren_close, comma;
-                    int first_param, second_param, x, y;
+                    int second_param, x, y;
 
                     stringstream ss(line);
                     ss >> figure;
@@ -493,26 +564,27 @@ public:
                     
                     if (figure == "Square"){
                         ss >> label >> first_param >> paren_close >> comma;
-                        ss >> label >> x >> comma >> y >> paren_close;
-                        cout << first_param << "|" << x << "|" << y << endl; 
-                        blackboard->add_square(first_param, x, y);
-                    }
-                    else if (figure == "Circle"){
-                        ss >> label >> first_param >> paren_close >> comma;
-                        ss >> label >> x >> comma >> y >> paren_close;
-                        blackboard->add_circle(first_param, x, y);
-                    }
-                    else if (figure == "Triangle"){
-                        ss >> label >> first_param >> paren_close >> comma;
-                        ss >> label >> x >> comma >> y >> paren_close;
-                        blackboard->add_triangle(first_param, x, y);
-                    }
-                    else if (figure == "Line"){
-                        ss >> label >> first_param >> paren_close >> comma;
                         ss >> label >> second_param >> paren_close >> comma;
                         ss >> label >> x >> comma >> y >> paren_close;
-                        blackboard->add_line(first_param, second_param, x, y);
+                        cout << first_param << "|" << x << "|" << y << endl; 
+                        blackboard->add_square(first_param, second_param, x, y);
                     }
+                    // else if (figure == "Circle"){
+                    //     ss >> label >> first_param >> paren_close >> comma;
+                    //     ss >> label >> x >> comma >> y >> paren_close;
+                    //     blackboard->add_circle(first_param, x, y);
+                    // }
+                    // else if (figure == "Triangle"){
+                    //     ss >> label >> first_param >> paren_close >> comma;
+                    //     ss >> label >> x >> comma >> y >> paren_close;
+                    //     blackboard->add_triangle(first_param, x, y);
+                    // }
+                    // else if (figure == "Line"){
+                    //     ss >> label >> first_param >> paren_close >> comma;
+                    //     ss >> label >> second_param >> paren_close >> comma;
+                    //     ss >> label >> x >> comma >> y >> paren_close;
+                    //     blackboard->add_line(first_param, second_param, x, y);
+                    // }
                     else {
                         cout << "File structure damaged\n";
                         file.close();
@@ -585,56 +657,57 @@ public:
         else cout << "Please provide a filename to load.\n";
     }
     else if(command == "add"){
-        if(parts.size() < 3) {
+        if(parts.size() < 4) {
             cout << "Oups! It's incorrect command usage. Type shapes command to see correct usage\n";
             return;
         }
         string figure = parts[1];
+        string color = parts[2];
 
-        if (figure == "square" && parts.size() == 5){
+        if (figure == "square" && parts.size() == 6){
             try {
-                int size = stoi(parts[2]);
-                int x = stoi(parts[3]);
-                int y = stoi(parts[4]);
-                blackboard->add_square(size, x, y);
-            } catch (exception& e) {
-                cout << "Please, provide only valid integers\n";
-            }
-        }
-
-        else if (figure == "circle" && parts.size() == 5){
-            try {
-                int radius = stoi(parts[2]);
-                int x = stoi(parts[3]);
-                int y = stoi(parts[4]);
-                blackboard->add_circle(radius, x, y);
-            } catch (exception& e) {
-                cout << "Please, provide only valid integers\n";
-            }
-        }
-
-        else if (figure == "triangle" && parts.size() == 5){
-            try {
-                int height = stoi(parts[2]);
-                int x = stoi(parts[3]);
-                int y = stoi(parts[4]);
-                blackboard->add_triangle(height, x, y);
-            } catch (exception& e) {
-                cout << "Please, provide only valid integers\n";
-            }
-        }
-
-        else if (figure == "line" && parts.size() == 6){
-            try {
-                int length = stoi(parts[2]);
-                int angle = stoi(parts[3]);
+                int size = stoi(parts[3]);
                 int x = stoi(parts[4]);
                 int y = stoi(parts[5]);
-                blackboard->add_line(length, angle, x, y);
+                blackboard->add_square(color, size, x, y);
             } catch (exception& e) {
                 cout << "Please, provide only valid integers\n";
             }
         }
+
+        // else if (figure == "circle" && parts.size() == 5){
+        //     try {
+        //         int radius = stoi(parts[2]);
+        //         int x = stoi(parts[3]);
+        //         int y = stoi(parts[4]);
+        //         blackboard->add_circle(radius, x, y);
+        //     } catch (exception& e) {
+        //         cout << "Please, provide only valid integers\n";
+        //     }
+        // }
+
+        // else if (figure == "triangle" && parts.size() == 5){
+        //     try {
+        //         int height = stoi(parts[2]);
+        //         int x = stoi(parts[3]);
+        //         int y = stoi(parts[4]);
+        //         blackboard->add_triangle(height, x, y);
+        //     } catch (exception& e) {
+        //         cout << "Please, provide only valid integers\n";
+        //     }
+        // }
+
+        // else if (figure == "line" && parts.size() == 6){
+        //     try {
+        //         int length = stoi(parts[2]);
+        //         int angle = stoi(parts[3]);
+        //         int x = stoi(parts[4]);
+        //         int y = stoi(parts[5]);
+        //         blackboard->add_line(length, angle, x, y);
+        //     } catch (exception& e) {
+        //         cout << "Please, provide only valid integers\n";
+        //     }
+        // }
         else {
             cout << "No such figure, enter 'shapes' to see available figures\n";
         }
