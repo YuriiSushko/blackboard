@@ -83,7 +83,7 @@ public:
 
     const string get_info() override {
         stringstream info;
-        info << "Square: id(" << s_id << "), size(" << size << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+        info << "Square: id(" << s_id << "), size( " << size << " ), coordinates( " << get<0>(coordinates) << "," << get<1>(coordinates) << " )\n";
         cout << info.str();
         return info.str();
     }
@@ -146,7 +146,7 @@ public:
 
     const string get_info() override {
         stringstream info;
-        info << "Triangle: id(" << s_id << "), height(" << height << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+        info << "Triangle: id(" << s_id << "), height( " << height << " ), coordinates( " << get<0>(coordinates) << "," << get<1>(coordinates) << " )\n";
         cout << info.str();
         return info.str();
     }
@@ -195,7 +195,7 @@ public:
 
     const string get_info() override {
         stringstream info;
-        info << "Circle: id(" << s_id << "), radius(" << radius << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+        info << "Circle: id(" << s_id << "), radius( " << radius << " ), coordinates( " << get<0>(coordinates) << "," << get<1>(coordinates) << " )\n";
         cout << info.str();
         return info.str();
     }
@@ -247,7 +247,7 @@ public:
 
     const string get_info() override {
         stringstream info;
-        info << "Line: id(" << s_id << "), length(" << length << "), angle(" << angle << "), coordinates(" << get<0>(coordinates) << "," << get<1>(coordinates) << ")\n";
+        info << "Line: id(" << s_id << "), length( " << length << " ), angle( " << angle << " ), coordinates( " << get<0>(coordinates) << "," << get<1>(coordinates) << " )\n";
         cout << info.str();
         return info.str();
     }
@@ -256,93 +256,6 @@ public:
         return if_outside;
     }
 };
-
-class FileSystem {
-private:
-    string path;
-    vector<vector<char>> grid;
-    Blackboard* blackboard;
-public:
-    FileSystem(const string& path, Blackboard* blackboard): path(path), blackboard(blackboard){}
-
-    void save(){
-        ofstream file;
-        file.open(path);
-        vector<string> figure_list = blackboard->list();
-
-        if (figure_list.size() != 0){
-            for (auto figure : figure_list){
-                file << figure;
-            }
-        }
-        else file << 0;
-
-        cout << "File has been successfully saved!\n";
-        file.close();
-    }
-
-    void load(){
-        string line;
-        ifstream file (path);
-
-        grid.clear();
-
-        if (file.is_open()){
-            while (getline(file, line)) {
-                if(line[0] == '0'){
-                    blackboard->clear();
-                }
-                else{
-                    blackboard->clear();
-
-                    string figure;
-                    string label;
-                    string id;
-                    char comma;
-                    int first_param;
-                    int second_param;
-                    int x;
-                    int y;
-
-                    stringstream ss(line);
-                    ss >> figure;
-                    figure.pop_back();
-                    ss >> id;
-                    
-                    if (figure == "Square"){
-                        ss >> label >> first_param;
-                        ss >> label >> x >> comma >> y;
-                        blackboard->add_square(first_param, x, y);
-                    }
-                    else if (figure == "Circle"){
-                        ss >> label >> first_param;
-                        ss >> label >> x >> comma >> y;
-                        blackboard->add_circle(first_param, x, y);
-                    }
-                    else if (figure == "Triangle"){
-                        ss >> label >> first_param;
-                        ss >> label >> x >> comma >> y;
-                        blackboard->add_triangle(first_param, x, y);
-                    }
-                    else if (figure == "Line"){
-                        ss >> label >> first_param;
-                        ss >> label >> second_param;
-                        ss >> label >> x >> comma >> y;
-                        blackboard->add_line(first_param, second_param, x, y);
-                    }
-                    else {
-                        cout << "File structure damaged\n";
-                        file.close();
-                        return;
-                    }
-                }
-            }
-        }
-        else cout << "Unable to open file"; 
-        file.close();
-    }
-};
-
 
 class Blackboard
 {
@@ -463,18 +376,90 @@ public:
         figures.clear();
         grid = vector<vector<char>>(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' '));
     }
-
-    void save(const string& filepath){
-        FileSystem fs(filepath, this);
-        fs.save();
-    }
-
-    void load(const string& filepath){
-        FileSystem fs(filepath, this);
-        fs.load();
-    }
 };
 
+class FileSystem {
+private:
+    string path;
+    vector<vector<char>> grid;
+    Blackboard* blackboard;
+public:
+    FileSystem(const string& path, Blackboard* blackboard): path(path), blackboard(blackboard){}
+
+    void save(){
+        ofstream file;
+        file.open(path);
+        vector<string> figure_list = blackboard->list();
+
+        if (figure_list.size() != 0){
+            for (auto figure : figure_list){
+                file << figure;
+            }
+        }
+        else file << 0;
+
+        cout << "File has been successfully saved!\n";
+        file.close();
+    }
+
+    void load(){
+        string line;
+        ifstream file (path);
+
+        blackboard->clear();
+
+        if (file.is_open()){
+            while (getline(file, line)) {
+                if(line[0] == '0'){
+                    return;
+                }
+                else{
+
+                    string figure;
+                    string label;
+                    string id;
+                    char paren_close, comma;
+                    int first_param, second_param, x, y;
+
+                    stringstream ss(line);
+                    ss >> figure;
+                    figure.pop_back();
+                    ss >> id;
+                    
+                    if (figure == "Square"){
+                        ss >> label >> first_param >> paren_close >> comma;
+                        ss >> label >> x >> comma >> y >> paren_close;
+                        cout << first_param << "|" << x << "|" << y << endl; 
+                        blackboard->add_square(first_param, x, y);
+                    }
+                    else if (figure == "Circle"){
+                        ss >> label >> first_param >> paren_close >> comma;
+                        ss >> label >> x >> comma >> y >> paren_close;
+                        blackboard->add_circle(first_param, x, y);
+                    }
+                    else if (figure == "Triangle"){
+                        ss >> label >> first_param >> paren_close >> comma;
+                        ss >> label >> x >> comma >> y >> paren_close;
+                        blackboard->add_triangle(first_param, x, y);
+                    }
+                    else if (figure == "Line"){
+                        ss >> label >> first_param >> paren_close >> comma;
+                        ss >> label >> second_param >> paren_close >> comma;
+                        ss >> label >> x >> comma >> y >> paren_close;
+                        blackboard->add_line(first_param, second_param, x, y);
+                    }
+                    else {
+                        cout << "File structure damaged\n";
+                        file.close();
+                        return;
+                    }
+                }
+            }
+        }
+        else cout << "Unable to open file\n"; 
+        file.close();
+    }
+};
 
 class Parser {
 private:
@@ -521,16 +506,18 @@ public:
         blackboard->clear();
     }
     else if (command == "save"){
-        if(parts.size() > 1)
-            blackboard->save(parts[1]);
-        else 
-            cout << "Please provide a filename to save.\n";
+        if(parts.size() > 1){
+            FileSystem fs(parts[1], blackboard);
+            fs.save();
+        }
+        else cout << "Please provide a filename to save.\n";
     } 
     else if (command == "load"){
-        if(parts.size() > 1)
-            blackboard->load(parts[1]);
-        else 
-            cout << "Please provide a filename to load.\n";
+        if(parts.size() > 1){
+            FileSystem fs(parts[1], blackboard);
+            fs.load();
+        }            
+        else cout << "Please provide a filename to load.\n";
     }
     else if(command == "add"){
         if(parts.size() < 3) {
