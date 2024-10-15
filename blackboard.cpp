@@ -212,9 +212,9 @@ public:
         return "Square";
     }
 
-    void set_color(pair<char, const char*> color) override{
-        display_color = color.second;
-        display_char = color.first;
+    void set_color(pair<char, const char*> new_color) override{
+        display_color = new_color.second;
+        display_char = new_color.first;
     }
 };
 
