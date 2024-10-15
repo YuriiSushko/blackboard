@@ -24,6 +24,7 @@ public:
     virtual void add(vector<vector<char>>* grid) = 0;
     virtual const string get_info() = 0;
     virtual const bool get_placement() = 0;
+    virtual bool operator==(const Figure& other) const = 0;
 };
 
 int Figure::id = 0;
@@ -91,6 +92,14 @@ public:
     const bool get_placement() override{
         return if_outside;
     }
+
+   bool operator==(const Figure& other) const override{
+        const Square* otherFigure = dynamic_cast<const Square*>(&other);
+        if (otherFigure){
+            return size == otherFigure->size && coordinates == otherFigure->coordinates;
+        }
+        return false;
+    }
 };
 
 class Triangle: public Figure{
@@ -154,6 +163,14 @@ public:
     const bool get_placement() override{
         return if_outside;
     }
+
+    bool operator==(const Figure& other) const override{
+        const Triangle* otherFigure = dynamic_cast<const Triangle*>(&other);
+        if (otherFigure){
+            return height == otherFigure->height && coordinates == otherFigure->coordinates;
+        }
+        return false;
+    }
 };
 
 class Circle: public Figure{
@@ -202,6 +219,14 @@ public:
 
     const bool get_placement() override{
         return if_outside;
+    }
+
+    bool operator==(const Figure& other) const override{
+        const Circle* otherFigure = dynamic_cast<const Circle*>(&other);
+        if (otherFigure){
+            return radius == otherFigure->radius && coordinates == otherFigure->coordinates;
+        }
+        return false;
     }
 };
 
@@ -255,6 +280,14 @@ public:
     const bool get_placement() override{
         return if_outside;
     }
+
+    bool operator==(const Figure& other) const override{
+        const Line* otherFigure = dynamic_cast<const Line*>(&other);
+        if (otherFigure){
+            return angle == otherFigure->angle && length == otherFigure->length && coordinates == otherFigure->coordinates;
+        }
+        return false;
+    }
 };
 
 class Blackboard
@@ -292,57 +325,89 @@ public:
     void add_square(const int& size, const int& x, const int& y){
         previous = grid;
 
-        auto figure = make_unique<Square>(size, x, y);
-        figure->add(&grid);
+        auto new_figure = make_unique<Square>(size, x, y);
 
-        if (figure.get()->get_placement()){
+        for (const auto& figure : figures) {
+            Square* existing_square = dynamic_cast<Square*>(figure.get());
+            if (existing_square && *existing_square == *new_figure) {
+                cout << "Same figure exists\n";
+                return;
+            }
+        }
+        new_figure->add(&grid);
+
+        if (new_figure.get()->get_placement()){
             cout << "Figure is outside the box\n";
             return;
         }
 
-        figures.push_back(move(figure));
+        figures.push_back(move(new_figure));
     } 
 
     void add_triangle(const int& height, const int& x, const int& y){
         previous = grid;
 
-        auto figure = make_unique<Triangle>(height, x, y);
-        figure->add(&grid);
+        auto new_figure = make_unique<Triangle>(height, x, y);
 
-        if (figure.get()->get_placement()){
+        for (const auto& figure : figures) {
+            Triangle* existing_triangle = dynamic_cast<Triangle*>(figure.get());
+            if (existing_triangle && *existing_triangle == *new_figure) {
+                cout << "Same figure exists\n";
+                return;
+            }
+        }
+        new_figure->add(&grid);
+
+        if (new_figure.get()->get_placement()){
             cout << "Figure is outside the box\n";
             return;
         }
 
-        figures.push_back(move(figure));
+        figures.push_back(move(new_figure));  
     } 
 
     void add_circle(const int& radius, const int& x, const int& y){
         previous = grid;
 
-        auto figure = make_unique<Circle>(radius, x, y);
-        figure->add(&grid);
+        auto new_figure = make_unique<Circle>(radius, x, y);
 
-        if (figure.get()->get_placement()){
+        for (const auto& figure : figures) {
+            Circle* existing_circle = dynamic_cast<Circle*>(figure.get());
+            if (existing_circle && *existing_circle == *new_figure) {
+                cout << "Same figure exists\n";
+                return;
+            }
+        }
+        new_figure->add(&grid);
+
+        if (new_figure.get()->get_placement()){
             cout << "Figure is outside the box\n";
             return;
         }
 
-        figures.push_back(move(figure));        
+        figures.push_back(move(new_figure));       
     }
 
     void add_line(const int& length, const int& angle, const int& x, const int& y){
         previous = grid;
 
-        auto figure = make_unique<Line>(length, angle, x, y);
-        figure->add(&grid);
+        auto new_figure = make_unique<Line>(length, angle, x, y);
 
-        if (figure.get()->get_placement()){
+        for (const auto& figure : figures) {
+            Line* existing_line = dynamic_cast<Line*>(figure.get());
+            if (existing_line && *existing_line == *new_figure) {
+                cout << "Same figure exists\n";
+                return;
+            }
+        }
+        new_figure->add(&grid);
+
+        if (new_figure.get()->get_placement()){
             cout << "Figure is outside the box\n";
             return;
         }
 
-        figures.push_back(move(figure));     
+        figures.push_back(move(new_figure));     
     }
 
     void shapes() {
