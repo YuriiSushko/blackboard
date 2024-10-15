@@ -6,6 +6,7 @@
 #include <cctype> 
 #include <sstream>
 #include <map>
+#include <algorithm>
 using namespace std;
 
 #define RED    "\033[31m"
@@ -31,6 +32,10 @@ public:
     virtual const string get_info() = 0;
     virtual const bool get_placement() = 0;
     virtual bool operator==(const Figure& other) const = 0;
+    virtual char get_symbol() const = 0;
+    virtual const char* get_color() const = 0;
+    virtual int get_id() const = 0;
+    virtual string get_type() const = 0;
 };
 
 int Figure::id = 0;
@@ -46,13 +51,20 @@ public:
     void addFigure(Figure* figure) {
         figures.push_back(figure);
     }
+
+    Figure* lastFigure(){
+        if(!figures.empty()){
+            return figures.back();
+        }
+        return nullptr;
+    }
     
     char get_symbol(){
-        return symbol;
+        return figures.back()->get_symbol();
     }
 
     const char* get_color(){
-        return color;
+        return figures.back()->get_color();
     }
 };
 
@@ -66,9 +78,17 @@ private:
     char display_char;
     const char* display_color;
     vector<shared_ptr<Cell>> occupiedCells;
+    bool fill;
+
 public:
-    Square(pair<char, const char*> color, const int& size, const int& x, const int& y): size(size), coordinates(make_tuple(x,y)), s_id(id++),
-     display_char(color.first), display_color(color.second) { }
+    Square(bool fill, pair<char, const char*> color, const int& size, const int& x, const int& y): size(size), coordinates(make_tuple(x,y)), s_id(id++),
+     display_char(color.first), display_color(color.second), fill(fill) { }
+
+    Square(Square&& other, const int& new_size) : size(new_size), coordinates(std::move(other.coordinates)), s_id(other.s_id),
+     display_char(other.display_char), display_color(other.display_color), fill(other.fill) 
+    {
+        other.size = 0;
+    }
 
     void add(vector<vector<weak_ptr<Cell>>>* grid) override{
         if (size <= 0){
@@ -102,6 +122,7 @@ public:
                                 (*grid)[up_bound - current_row - 1][j] = cell;
                                 occupiedCells.push_back(cell);  
                             }
+                            cell->addFigure(this);
                         }
                     }
                     continue;
@@ -117,7 +138,9 @@ public:
                         (*grid)[up_bound - current_row - 1][x] = cell;
                         occupiedCells.push_back(cell);
                     }
+                    cell->addFigure(this);
                 }
+
                 if (x + size - 1 >= 0 && x + size - 1 < right_bound) {
                     shared_ptr<Cell> cell = (*grid)[up_bound - current_row - 1][x+size-1].lock();
 
@@ -126,15 +149,36 @@ public:
                         (*grid)[up_bound - current_row - 1][x+size-1] = cell;
                         occupiedCells.push_back(cell);
                     }
+                    cell->addFigure(this);
                 }
             }
+        }
             
+        if (fill) {
+            for (int i = 1; i < size - 1; i++) {
+                int current_row = y - i;
+                if (current_row >= 0 && current_row < up_bound) {
+                    for (int j = x; j < x + size; j++) {
+                        if (j >= 0 && j < right_bound) {
+                            shared_ptr<Cell> cell = (*grid)[up_bound - current_row - 1][j].lock();
+
+                            if (!cell) {
+                                cell = make_shared<Cell>(&display_char, display_color);
+                                (*grid)[up_bound - current_row - 1][j] = cell;
+                                occupiedCells.push_back(cell);
+                            }
+                            cell->addFigure(this);
+                        }
+                    }
+                }
+            }
         }
     }
 
     const string get_info() override {
         stringstream info;
-        info << "Square: id(" << s_id << "), size( " << size << " ), coordinates( " << get<0>(coordinates) << "," << get<1>(coordinates) << " )\n";
+        info << "Square: id(" << s_id << "), size( " << size << " ), coordinates( " << get<0>(coordinates) << "," << get<1>(coordinates)
+         << " ), color( " << display_char << " ), filled( "<< (fill ? "yes" : "no") <<" )\n";
         cout << info.str();
         return info.str();
     }
@@ -143,12 +187,28 @@ public:
         return if_outside;
     }
 
-   bool operator==(const Figure& other) const override{
+    bool operator==(const Figure& other) const override{
         const Square* otherFigure = dynamic_cast<const Square*>(&other);
         if (otherFigure){
             return size == otherFigure->size && coordinates == otherFigure->coordinates;
         }
         return false;
+    }
+
+    char get_symbol() const override{
+        return display_char;
+    }
+
+    const char* get_color() const override{
+        return display_color;
+    }
+
+    int get_id()const override{
+        return s_id;
+    }
+    
+    string get_type() const override{
+        return "Square";
     }
 };
 
@@ -357,7 +417,7 @@ private:
         {"magenta", {'m', MAGENTA}},
         {"purple", {'p', PURPLE}}
     };
-
+    Figure* selected_figure;
     vector<vector<weak_ptr<Cell>>> grid;;
     vector<unique_ptr<Figure>> figures;
     vector<vector<weak_ptr<Cell>>> previous;
@@ -394,10 +454,16 @@ public:
         cout << '\n';
     }
 
-    void add_square(const string& color, const int& size, const int& x, const int& y){
+    void add_square(string fill, const string& color, const int& size, const int& x, const int& y){
         previous = grid;
+        bool flag;
 
-        auto new_figure = make_unique<Square>(ALLOWED_COLORS[color],size, x, y);
+        if (fill == "fill"){
+            flag = true;
+        }
+        else flag = false;
+
+        auto new_figure = make_unique<Square>(flag,ALLOWED_COLORS[color],size, x, y);
 
         for (const auto& figure : figures) {
             Square* existing_square = dynamic_cast<Square*>(figure.get());
@@ -512,6 +578,71 @@ public:
     void clear(){
         figures.clear();
     }
+
+    void select_figure_by_coord(const int& x, const int& y){
+        shared_ptr<Cell> cell = grid[BOARD_HEIGHT-y][x].lock(); 
+
+        if (cell!=nullptr){
+            selected_figure = cell->lastFigure();
+            cout << "Selected ";
+            selected_figure->get_info();
+        }
+        else{
+            cout << "There is no figure on coordinates\n";
+        }
+    }
+
+    void select_by_id(const int& id){
+        if(figures.size() > 0){
+            for (auto& shape: figures){
+                if (id == shape->get_id()){
+                    selected_figure = shape.get();
+                    cout << "Selected: ";
+                    shape->get_info();
+                }
+            }
+        }
+        else cout << "No figures with that id\n";
+    }
+
+    void remove(){
+        if(figures.size() > 0){
+            for(int i = 0; i < figures.size(); i++){
+                if (selected_figure->get_id() == figures[i]->get_id()){
+                    selected_figure->get_info();
+                    figures.erase(figures.begin() + i);                  
+                    cout << "Was removed\n";
+                }
+            }
+        }
+    }
+
+    void edit(const int& size){
+        if (auto selected_square = dynamic_cast<Square*>(selected_figure)) {
+            auto new_square = make_unique<Square>(move(*selected_square), size);
+            
+            new_square->add(&grid);
+
+            if (new_square.get()->get_placement()){
+                cout << "Figure is outside the box\n";
+                new_square.release();
+                return;
+            }
+            figures.push_back(move(new_square));
+
+            if(figures.size() > 0){
+                for(int i = 0; i < figures.size(); i++){
+                    if (selected_figure->get_id() == figures[i]->get_id()){
+                        figures.erase(figures.begin() + i);
+                    }
+                }
+            }
+
+        } else {
+        cout << "Selected figure is not a square.\n";
+    }
+
+    }
 };
 
 class FileSystem {
@@ -552,10 +683,10 @@ public:
                 else{
 
                     string figure;
-                    string label, first_param;
+                    string label, first_param, second_param;
                     string id;
                     char paren_close, comma;
-                    int second_param, x, y;
+                    int third_param, x, y;
 
                     stringstream ss(line);
                     ss >> figure;
@@ -565,9 +696,10 @@ public:
                     if (figure == "Square"){
                         ss >> label >> first_param >> paren_close >> comma;
                         ss >> label >> second_param >> paren_close >> comma;
+                        ss >> label >> third_param >> paren_close >> comma;
                         ss >> label >> x >> comma >> y >> paren_close;
                         cout << first_param << "|" << x << "|" << y << endl; 
-                        blackboard->add_square(first_param, second_param, x, y);
+                        blackboard->add_square(first_param, second_param, third_param, x, y);
                     }
                     // else if (figure == "Circle"){
                     //     ss >> label >> first_param >> paren_close >> comma;
@@ -642,6 +774,18 @@ public:
     else if (command == "clear"){
         blackboard->clear();
     }
+    else if (command == "remove"){
+        blackboard->remove();
+    }
+    else if(command == "edit"){
+        blackboard->edit(stoi(parts[1]));
+    }
+    else if (command == "select"){
+        if(parts.size() == 3){
+            blackboard->select_figure_by_coord(stoi(parts[1]), stoi(parts[2]));
+        }
+        else{ blackboard->select_by_id(stoi(parts[1])); }
+    }
     else if (command == "save"){
         if(parts.size() > 1){
             FileSystem fs(parts[1], blackboard);
@@ -662,14 +806,16 @@ public:
             return;
         }
         string figure = parts[1];
-        string color = parts[2];
+        string fill = parts[2];
+        string color = parts[3];
+        
 
-        if (figure == "square" && parts.size() == 6){
+        if (figure == "square" && parts.size() == 7){
             try {
-                int size = stoi(parts[3]);
-                int x = stoi(parts[4]);
-                int y = stoi(parts[5]);
-                blackboard->add_square(color, size, x, y);
+                int size = stoi(parts[4]);
+                int x = stoi(parts[5]);
+                int y = stoi(parts[6]);
+                blackboard->add_square(fill,color, size, x, y);
             } catch (exception& e) {
                 cout << "Please, provide only valid integers\n";
             }
